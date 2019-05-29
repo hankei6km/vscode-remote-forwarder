@@ -92,10 +92,14 @@ function request_forward {
   fi
 }
 
+function receive_response {
+  if [ -p "${FIFO_RESP}" ] ; then
+    head -n 1 "${FIFO_RESP}"
+  fi
+}
+
 docker exec -i -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc | tee >(grep -E "${MSG_PATTERN}" | request_forward)  | grep --line-buffered -v -E "${MSG_PATTERN}"
 
-if [ -p "${FIFO_RESP}" ] ; then
-  head -n 1 "${FIFO_RESP}"
-fi
+receive_response
 
 rm -rf "${RUN_RESP_PATH:?}"
