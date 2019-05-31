@@ -37,7 +37,8 @@ if [ -z "${CONTAINER_NAME}" ] ; then
 fi
 
 
-if [ -n "${SSH_ORIGINAL_COMMAND}" ] ; then
+if [ -n "${SSH_ORIGINAL_COMMAND}" ] && [ "${SSH_ORIGINAL_COMMAND}" != "bash" ] ; then
+  # echo "${SSH_ORIGINAL_COMMAND}"
   docker exec -i -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc -c "${SSH_ORIGINAL_COMMAND}"
   exit "${?}"
 fi
@@ -63,25 +64,31 @@ if [ -d "${RUN_RESP_PATH}" ] ; then
 fi
 mkdir -m 700 "${RUN_RESP_PATH}" 
 
-MSG_PATTERN="[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+==([0-9]+)=="
+HOOK_PATTERN="^VSCH_LOGFILE=|[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+==([0-9]+)=="
+
+INSERT_ECHO='s/^\( *VSCH_LOGFILE=.*\)/\1 ; echo "VSCH_LOGFILE='"$"'{VSCH_LOGFILE}"/'
 PORT_SUB="s/\([^=]\+\)==\([0-9]\+\)==/\2/"
 MSG_ID_SUB="s/\([^=]\+\)==\([0-9]\+\)==/\1/"
 ADDR_PATTERN="IP Address: "
 
 function get_container_server_log {
-  docker exec -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc -c 'head -n 40 $(ls --sort=time "${HOME}"/.vscode-remote/.*.log | head -n 1)' 
+  docker exec -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc -c "head -n 40 ${1}"
 }
 
 function get_container_addr_from_log {
-  CONTAINER_ADDR=$(get_container_server_log | grep "${ADDR_PATTERN}" | head -n 1)
+  CONTAINER_ADDR=$(get_container_server_log "${1}" | grep "${ADDR_PATTERN}" | head -n 1)
   echo "${CONTAINER_ADDR/${ADDR_PATTERN}/}"
 }
 
 function request_forward {
-  if read -r MSG_LINE ; then
-    PORT=$(echo "${MSG_LINE}" | sed -e "${PORT_SUB}")
-    MSG_ID=$(echo "${MSG_LINE}" | sed -e "${MSG_ID_SUB}")
-    ADDR="$(get_container_addr_from_log)"
+  mapfile -t HOOKED_LINES
+  if [ "${#HOOKED_LINES[@]}" -eq 2 ] ; then
+
+    VSCH_LOGFILE="${HOOKED_LINES[0]#VSCH_LOGFILE=}"
+
+    PORT=$(echo "${HOOKED_LINES[1]}" | sed -e "${PORT_SUB}")
+    MSG_ID=$(echo "${HOOKED_LINES[1]}" | sed -e "${MSG_ID_SUB}")
+    ADDR="$(get_container_addr_from_log "${VSCH_LOGFILE}" )"
     # echo "${PORT}" "${ADDR}:${PORT}"  "${FIFO_REQ}"
 
     if [ ! -p "${FIFO_RESP}" ] ; then
@@ -89,6 +96,7 @@ function request_forward {
     fi
 
     sem --fg --id "${SEM_ID_REQ}" 'echo '"${RESP_ID} ${MSG_ID} ${ADDR}:${PORT}"' > '"${FIFO_REQ}"
+
   fi
 }
 
@@ -98,7 +106,8 @@ function receive_response {
   fi
 }
 
-docker exec -i -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc | tee >(grep -E "${MSG_PATTERN}" | request_forward)  | grep --line-buffered -v -E "${MSG_PATTERN}"
+sed -e "${INSERT_ECHO}" \
+  | docker exec -i -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc | tee >(grep -E "${HOOK_PATTERN}" | request_forward)  | grep --line-buffered -v -E "${HOOK_PATTERN}"
 
 receive_response
 
