@@ -72,7 +72,7 @@ MSG_ID_SUB="s/\([^=]\+\)==\([0-9]\+\)==/\1/"
 ADDR_PATTERN="IP Address: "
 
 function get_container_server_log {
-  docker exec -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc -c "head -n 40 ${1}"
+  docker exec -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc -c "head -n 40 '""${1}""'"
 }
 
 function get_container_addr_from_log {
