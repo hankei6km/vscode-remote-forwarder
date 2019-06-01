@@ -5,16 +5,22 @@
 
 set -eu
 
+# shellcheck disable=SC2016
+SOURCE_FILE='${HOME}/.forwarder_env'
 USER_IN_CONTAINER="1000"
 CONTAINER_NAME=""
 SSH_ORIGINAL_COMMAND=""
 
 function _usage {
-  printf "Usage: %s: [-u USER(default:1000)] CONTAINER [SSH_ORIGINAL_COMMAND]\n" "$(basename "$0")"
+  printf "Usage: %s: [-s SOURCE_FILE(default:%s)][-u USER(default:%s)] CONTAINER [SSH_ORIGINAL_COMMAND]\n" \
+    "$(basename "$0")" \
+    "${SOURCE_FILE}" \
+    "${USER_IN_CONTAINER}"
 }
 
-while getopts u: FLAG ; do
+while getopts s:u: FLAG ; do
   case "${FLAG}" in
+    s) SOURCE_FILE="${OPTARG}";;
     u) USER_IN_CONTAINER="${OPTARG}";;
     *) _usage ; exit 1;;
   esac
@@ -64,6 +70,11 @@ if [ -d "${RUN_RESP_PATH}" ] ; then
 fi
 mkdir -m 700 "${RUN_RESP_PATH}" 
 
+INSERT_SOURCE_FILE=""
+if [ -n "${SOURCE_FILE}" ]; then
+  INSERT_SOURCE_FILE='test -e "'"${SOURCE_FILE}"'" && source "'"${SOURCE_FILE}"'"'";\n"
+fi
+
 HOOK_PATTERN="^VSCH_LOGFILE=|[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+==([0-9]+)=="
 
 INSERT_ECHO='s/^\( *VSCH_LOGFILE=.*\)/\1 ; echo "VSCH_LOGFILE='"$"'{VSCH_LOGFILE}"/'
@@ -106,8 +117,9 @@ function receive_response {
   fi
 }
 
-sed -e "${INSERT_ECHO}" \
-  | docker exec -i -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc | tee >(grep -E "${HOOK_PATTERN}" | request_forward)  | grep --line-buffered -v -E "${HOOK_PATTERN}"
+cat <(echo -ne "${INSERT_SOURCE_FILE}") - \
+  | sed -e "${INSERT_ECHO}" \
+    | docker exec -i -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc | tee >(grep -E "${HOOK_PATTERN}" | request_forward)  | grep --line-buffered -v -E "${HOOK_PATTERN}"
 
 receive_response
 
