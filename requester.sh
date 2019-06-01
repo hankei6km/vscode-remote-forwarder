@@ -45,7 +45,7 @@ fi
 
 if [ -n "${SSH_ORIGINAL_COMMAND}" ] && [ "${SSH_ORIGINAL_COMMAND}" != "bash" ] ; then
   # echo "${SSH_ORIGINAL_COMMAND}"
-  docker exec -i -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash --noprofile --norc -c "${SSH_ORIGINAL_COMMAND}"
+  docker exec -i -u "${USER_IN_CONTAINER}" "${CONTAINER_NAME}" bash -c "${SSH_ORIGINAL_COMMAND}"
   exit "${?}"
 fi
 
