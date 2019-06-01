@@ -77,7 +77,8 @@ fi
 
 HOOK_PATTERN="^VSCH_LOGFILE=|[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+==([0-9]+)=="
 
-INSERT_ECHO='s/^\( *VSCH_LOGFILE=.*\)/\1 ; echo "VSCH_LOGFILE='"$"'{VSCH_LOGFILE}"/'
+# shellcheck disable=SC2016
+INSERT_ECHO='s/^\( *VSCH_LOGFILE=.*\)/\1 ; echo "VSCH_LOGFILE=\"${VSCH_LOGFILE}\""/'
 PORT_SUB="s/\([^=]\+\)==\([0-9]\+\)==/\2/"
 MSG_ID_SUB="s/\([^=]\+\)==\([0-9]\+\)==/\1/"
 ADDR_PATTERN="IP Address: "
