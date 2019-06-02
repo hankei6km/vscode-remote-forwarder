@@ -6,11 +6,12 @@ Visual Studio Code の Remote Development において、Remote - SSH から Doc
        `- Remote SSH
              |
           SSH Host
-             `- Docker
-                  |-> Container1 (Go)
-                  |-> Container2 (Python)
-                  .
-                  .
+             `- remote-forwarder
+                     `- Docker
+                          |-> Container1 (Go)
+                          |-> Container2 (Python)
+                          .
+                          .
 
 ## Requirements
 
@@ -22,13 +23,16 @@ Visual Studio Code の Remote Development において、Remote - SSH から Doc
 以下、SSH Host 上で実施.
 
 - ディレクトリを作成し、`requester.sh` `forwarder.sh` を配置.
-- `authorized_keys` へ鍵を登録するときに、以下のように `command` を指定(`/path/to` `USER` `CONTAINER` は環境に合わせて変更).
+- `authorized_keys` へ鍵を登録するときに、以下のように `command` を指定(`'${HOME}/.bash_profile'` `/path/to` `USER` `CONTAINER` は環境に合わせて変更).
 
 ``` text
-command="/path/to/requester.sh -u USER CONTAINER \"${SSH_ORIGINAL_COMMAND}\"" ssh-....
+command="/path/to/requester.sh -s '${HOME}/.forwarder_env' -u USER CONTAINER \"${SSH_ORIGINAL_COMMAND}\"" ssh-....
 ```
 
 コンテナ内では、`-u` で指定したユーザーで Visual Studio Code のリモートサーバーが実行されます.
+
+`-s` で指定されたファイルは、コンテナ内で Visual Studio Code のリモートサーバーが実行されるときにインポート(`source`)されます. サーバーのインスタンスへ環境変数(例.`GOPATH`等)を与えることを想定しています
+(インポートされるファイルはコンテナ内に配置します. またファイル名の展開もコンテナ内で実施されます).
 
 ## Usage
 
