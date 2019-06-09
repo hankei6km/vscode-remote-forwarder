@@ -114,7 +114,8 @@ function request_forward {
 
 function receive_response {
   if [ -p "${FIFO_RESP}" ] ; then
-    head -n 1 "${FIFO_RESP}"
+    BUF=$(head -n 1 "${FIFO_RESP}")
+    echo "${BUF}"
   fi
 }
 

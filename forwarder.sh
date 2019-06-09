@@ -46,15 +46,16 @@ function forward {
     RUN_RESP_PATH="${RUN_PATH}/${RESP_ID}"
     FIFO_RESP="${RUN_RESP_PATH}/resp"
     if [ -n "${LISTEN_PORT}" ] ; then
-      echo "${MSG_ID}==${LISTEN_PORT}==" > "${FIFO_RESP}"
+      MSG="${MSG_ID}==${LISTEN_PORT}=="
+      echo "${MSG}" > "${FIFO_RESP}"
         
-      _log "forwading: ${MSG_ID}==${LISTEN_PORT}== ${CONNECT}"
+      _log "forwading: ${MSG} ${CONNECT}"
       sleep "${LISTEN_TIMEOUT}"
       while lsof -i -n -P -sTCP:ESTABLISHED | grep ":${LISTEN_PORT}" > /dev/null ; do
         sleep "${LISTEN_TIMEOUT}"
       done
       kill "${LISTEN_PID}"
-      _log  "closed: ${MSG_ID}==${LISTEN_PORT}== ${CONNECT}"
+      _log  "closed: ${MSG} ${CONNECT}"
 
     else
       _log "failed: ${MSG_ID}"
