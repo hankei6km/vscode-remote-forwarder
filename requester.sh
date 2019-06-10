@@ -107,7 +107,7 @@ function request_forward {
       mkfifo -m 600 "${FIFO_RESP}"
     fi
 
-    sem --fg --id "${SEM_ID_REQ}" 'echo '"${RESP_ID} ${MSG_ID} ${ADDR}:${PORT}"' > '"${FIFO_REQ}"
+    sem --fg --id "${SEM_ID_REQ}" 'echo '"'""${RESP_ID} ${MSG_ID} ${ADDR}:${PORT}""'"' > '"'""${FIFO_REQ}""'"
 
   fi
 }
