@@ -5,6 +5,11 @@
 
 set -eu
 
+DIR_NAME="$(dirname "$0")"
+RUN_PATH="${DIR_NAME}/run"
+
+MSG_PLACE_HOLDER="PORT"
+
 # shellcheck disable=SC2016
 SOURCE_FILE='${HOME}/.forwarder_env'
 USER_IN_CONTAINER="1000"
@@ -53,9 +58,6 @@ fi
 SEM_ID_REQ="github.com/hankei6km/vscode-remote-forwarder/run/req"
 
 
-DIR_NAME="$(dirname "$0")"
-RUN_PATH="${DIR_NAME}/run"
-
 FIFO_REQ="${RUN_PATH}/req"
 if [ ! -p "${FIFO_REQ}" ] ; then
   printf "fifo not found: %s\n" "${FIFO_REQ}"
@@ -75,12 +77,14 @@ if [ -n "${SOURCE_FILE}" ]; then
   INSERT_SOURCE_FILE='test -e "'"${SOURCE_FILE}"'" && source "'"${SOURCE_FILE}"'"'";\n"
 fi
 
-HOOK_PATTERN="^VSCH_LOGFILE=|[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+==([0-9]+)=="
+HOOK_PATTERN="^VSCH_LOGFILE=|[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+(==([0-9]+)){1}=="
 
 # shellcheck disable=SC2016
 INSERT_ECHO='s/^\( *VSCH_LOGFILE=.*\)/\1 ; echo "VSCH_LOGFILE=\"${VSCH_LOGFILE}\""/'
-PORT_SUB="s/\([^=]\+\)==\([0-9]\+\)==/\2/"
-MSG_ID_SUB="s/\([^=]\+\)==\([0-9]\+\)==/\1/"
+# とりあえず Extension host agent listening だけを取り出す
+# (webview server listening も転送する必要ある?)
+PORT_SUB="s/\([^=]\+\)==\([0-9]\+\)\(==[0-9]\+\)\{0,1\}==/\2/"
+MSG_TEMPLATE_SUB="s/==[0-9]\+==/==${MSG_PLACE_HOLDER}==/"
 ADDR_PATTERN="IP Address: "
 
 function get_container_server_log {
@@ -99,7 +103,7 @@ function request_forward {
     VSCH_LOGFILE="${HOOKED_LINES[0]#VSCH_LOGFILE=}"
 
     PORT=$(echo "${HOOKED_LINES[1]}" | sed -e "${PORT_SUB}")
-    MSG_ID=$(echo "${HOOKED_LINES[1]}" | sed -e "${MSG_ID_SUB}")
+    MSG_TEMPLATE=$(echo "${HOOKED_LINES[1]}" | sed -e "${MSG_TEMPLATE_SUB}")
     ADDR="$(get_container_addr_from_log "${VSCH_LOGFILE}" )"
     # echo "${PORT}" "${ADDR}:${PORT}"  "${FIFO_REQ}"
 
@@ -107,7 +111,7 @@ function request_forward {
       mkfifo -m 600 "${FIFO_RESP}"
     fi
 
-    sem --fg --id "${SEM_ID_REQ}" 'echo '"'""${RESP_ID} ${MSG_ID} ${ADDR}:${PORT}""'"' > '"'""${FIFO_REQ}""'"
+    sem --fg --id "${SEM_ID_REQ}" 'echo '"'""${RESP_ID} ${MSG_TEMPLATE} ${ADDR}:${PORT}""'"' > '"'""${FIFO_REQ}""'"
 
   fi
 }

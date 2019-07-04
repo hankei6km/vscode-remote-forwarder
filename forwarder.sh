@@ -6,10 +6,12 @@
 set -eu
 set -m
 
-LISTEN_TIMEOUT="30"
-
 DIR_NAME="$(dirname "${0}")"
 RUN_PATH="${DIR_NAME}/run"
+
+MSG_PLACE_HOLDER="PORT"
+
+LISTEN_TIMEOUT="30"
 
 
 function cleanup {
@@ -33,7 +35,7 @@ function _log {
 function forward {
   (
     RESP_ID="${1}"
-    MSG_ID="${2}"
+    MSG_TEMPLATE="${2}"
     CONNECT="${3}"
 
     socat "TCP-LISTEN:0,reuseaddr,fork" "TCP-CONNECT:${CONNECT}" &
@@ -46,7 +48,7 @@ function forward {
     RUN_RESP_PATH="${RUN_PATH}/${RESP_ID}"
     FIFO_RESP="${RUN_RESP_PATH}/resp"
     if [ -n "${LISTEN_PORT}" ] ; then
-      MSG="${MSG_ID}==${LISTEN_PORT}=="
+      MSG="${MSG_TEMPLATE/${MSG_PLACE_HOLDER}/$LISTEN_PORT}"
       echo "${MSG}" > "${FIFO_RESP}"
         
       _log "forwading: ${MSG} ${CONNECT}"
@@ -58,7 +60,7 @@ function forward {
       _log  "closed: ${MSG} ${CONNECT}"
 
     else
-      _log "failed: ${MSG_ID}"
+      _log "failed: ${MSG_TEMPLATE}"
       echo "" > "${FIFO_RESP}"
     fi
 
@@ -69,9 +71,9 @@ tail -f "${FIFO_REQ}" | while true ; do
   if read -r REQ_LINE ; then
     read -r -a ARGS <<< "${REQ_LINE}"
     RESP_ID="${ARGS[0]}"
-    MSG_ID="${ARGS[1]}"
+    MSG_TEMPLATE="${ARGS[1]}"
     CONNECT="${ARGS[2]}"
-    # echo  "RES_ID=${RESP_ID}" "MSG_ID=${MSG_ID}" "CONNECT=${CONNECT}"
-    forward "${RESP_ID}" "${MSG_ID}" "${CONNECT}"
+    # echo  "RES_ID=${RESP_ID}" "MSG_TEMPLATE=${MSG_TEMPLATE}" "CONNECT=${CONNECT}"
+    forward "${RESP_ID}" "${MSG_TEMPLATE}" "${CONNECT}"
   fi
 done
