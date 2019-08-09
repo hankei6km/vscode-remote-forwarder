@@ -77,13 +77,14 @@ if [ -n "${SOURCE_FILE}" ]; then
   INSERT_SOURCE_FILE='test -e "'"${SOURCE_FILE}"'" && source "'"${SOURCE_FILE}"'"'";\n"
 fi
 
-HOOK_PATTERN="^VSCH_LOGFILE=|[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+(==([0-9]+)){1}=="
+# ID に含まれる文字(https://www.freedesktop.org/software/systemd/man/os-release.html).
+HOOK_PATTERN="^VSCH_LOGFILE=|[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+(==([0-9]+)){1}(==([0-9a-z._-]+)){1}=="
 
 # shellcheck disable=SC2016
 INSERT_ECHO='s/^\( *VSCH_LOGFILE=.*\)/\1 ; echo "VSCH_LOGFILE=\"${VSCH_LOGFILE}\""/'
 # とりあえず Extension host agent listening だけを取り出す
 # (webview server listening も転送する必要ある?)
-PORT_SUB="s/\([^=]\+\)==\([0-9]\+\)\(==[0-9]\+\)\{0,1\}==/\2/"
+PORT_SUB="s/\([^=]\+\)==\([0-9]\+\)\(==[0-9]\+\)\{0,1\}\(==[0-9a-z._-]\+\)\{0,1\}==/\2/"
 MSG_TEMPLATE_SUB="s/==[0-9]\+==/==${MSG_PLACE_HOLDER}==/"
 ADDR_PATTERN="IP Address: "
 
