@@ -40,6 +40,44 @@ command="/path/to/requester.sh -s '${HOME}/.forwarder_env' -u USER CONTAINER \"$
 - SSH Host 上で `forwarder.sh` を実行しておく.
 - Visual Studio Code から、`authorized_keys` の設定を行った鍵で SSH Host へ接続.
 
+## Tips
+
+### １つの鍵で複数のコンテナへ接続する
+
+前提.
+
+- SSH Host は Client からの `REMOTE_VSCODE_SEND*` 環境変数を受け付けるようにできる.
+- 接続されるコンテナの名前を `vscode-remote-` で始まるようにできる.
+
+SSH Host上での設定.
+
+- SSH Host の設定で、クライアントからの環境変数 `REMOTE_VSCODE_SEND` を受け付けるようにする(`sshd_config` の`Match` ルールで `AcceptEnv REMOTE_VSCODE_SEND*` を指定する等).
+- `authorized_keys` の記述を以下のように変更する.
+
+``` text
+command="CONTAINER=\"\"; for v in \"${!REMOTE_VSCODE_SEND@}\" ; do CONTAINER=\"${CONTAINER}${!v}\" ; done ; /path/to/requester.sh  -s '${HOME}/.forwarder_env' -u 1000 vscode-remote-\"${CONTAINER}\" \"${SSH_ORIGINAL_COMMAND}\"" ssh-...
+```
+
+クライアントPC上での設定.
+
+- `REMOTE_VSCODE_SEND0=golang` `REMOTE_VSCODE_SEND1=extension` のようにコンテナ名の末尾を環境変数に設定(Visual Studio Code内でのみ利用なら`terminal.integrated.env.windows` 等で指定).
+- `.ssh/config` へ以下のようにコンテナ毎の接続設定を作成.
+
+      Host container-golang
+          HostName foo
+          User bar
+          IdentityFile C:\Users\bar\.ssh\vscode-remote
+          SendEnv REMOTE_VSCODE_SEND0
+          .
+          .
+      Host container-extension
+          HostName foo
+          User bar
+          IdentityFile C:\Users\bar\.ssh\vscode-remote
+          SendEnv REMOTE_VSCODE_SEND1
+
+以上の設定で、Visual Stuido Code の Host Explorer 等から `container-*` へ接続すると、`bar@foo` (`C:\Users\bar\.ssh\vscode-remote` 鍵を利用)への接続を経由し、それぞれのコンテナへ接続されるようになる.
+
 ## License
 
 Copyright (c) 2019 hankei6km
